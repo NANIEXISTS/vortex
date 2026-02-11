@@ -1,0 +1,7 @@
+{
+  "name": "Vortex AI",
+  "description": "An intelligent inventory and logistics agent for school book distributors. Vortex ingest messy order lists, normalizes publisher data, and provides powerful natural language insights.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
