@@ -110,8 +110,8 @@ const Dashboard: React.FC<DashboardProps> = ({ items, schools, onNavigate }) => 
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/5">
-                                        {stats.recentItems.map((item, idx) => (
-                                            <tr key={idx} className="hover:bg-white/[0.02]">
+                                        {stats.recentItems.map((item) => (
+                                            <tr key={item.id} className="hover:bg-white/[0.02]">
                                                 <td className="px-4 py-4 font-medium text-white truncate max-w-[200px]">{item.title}</td>
                                                 <td className="px-4 py-4 text-zinc-400">{item.publisher}</td>
                                                 <td className="px-4 py-4 text-zinc-400">{item.grade}</td>
@@ -145,7 +145,7 @@ const Dashboard: React.FC<DashboardProps> = ({ items, schools, onNavigate }) => 
                                     />
                                     <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
                                         {stats.topPublishers.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Bar>
                                 </BarChart>
