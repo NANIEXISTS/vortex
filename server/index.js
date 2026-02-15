@@ -24,18 +24,7 @@ app.use(express.static(path.join(__dirname, '../dist')));
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Auth Middleware
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) return res.sendStatus(401);
-
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403);
-        req.user = user;
-        next();
-    });
-};
+const authenticateToken = require("./middleware/auth");
 
 /* --- Routes --- */
 
@@ -278,6 +267,10 @@ app.use((req, res) => {
     res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-});
+module.exports = { app, authenticateToken };
+
+if (require.main === module) {
+    app.listen(port, () => {
+        console.log(`Server running on port ${port}`);
+    });
+}
