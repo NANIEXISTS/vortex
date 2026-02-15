@@ -3,6 +3,11 @@ import React, { useState, useRef } from 'react';
 import { analyzeDocument } from '../services/geminiService';
 import { BookItem, ProcessingStatus, NotificationType } from '../types';
 
+interface FileWithId {
+    id: string;
+    file: File;
+}
+
 interface DataIngestionProps {
     publishers: string[];
     onDataIngested: (schoolName: string, items: Omit<BookItem, 'id' | 'schoolId'>[]) => void;
@@ -11,7 +16,7 @@ interface DataIngestionProps {
 
 const DataIngestion: React.FC<DataIngestionProps> = ({ publishers, onDataIngested, notify }) => {
     const [dragActive, setDragActive] = useState(false);
-    const [files, setFiles] = useState<File[]>([]);
+    const [files, setFiles] = useState<FileWithId[]>([]);
     const [status, setStatus] = useState<ProcessingStatus>({ isProcessing: false, message: '', progress: 0 });
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -31,7 +36,10 @@ const DataIngestion: React.FC<DataIngestionProps> = ({ publishers, onDataIngeste
         setDragActive(false);
 
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            const droppedFiles = Array.from(e.dataTransfer.files);
+            const droppedFiles = Array.from(e.dataTransfer.files).map(file => ({
+                id: crypto.randomUUID(),
+                file
+            }));
             setFiles(prev => [...prev, ...droppedFiles]);
         }
     };
@@ -39,13 +47,16 @@ const DataIngestion: React.FC<DataIngestionProps> = ({ publishers, onDataIngeste
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         e.preventDefault();
         if (e.target.files && e.target.files[0]) {
-            const selectedFiles = Array.from(e.target.files);
+            const selectedFiles = Array.from(e.target.files).map(file => ({
+                id: crypto.randomUUID(),
+                file
+            }));
             setFiles(prev => [...prev, ...selectedFiles]);
         }
     };
 
-    const removeFile = (idx: number) => {
-        setFiles(prev => prev.filter((_, i) => i !== idx));
+    const removeFile = (id: string) => {
+        setFiles(prev => prev.filter(f => f.id !== id));
     };
 
     const clearFiles = () => setFiles([]);
@@ -53,7 +64,7 @@ const DataIngestion: React.FC<DataIngestionProps> = ({ publishers, onDataIngeste
     const loadSampleData = () => {
         // Hidden functionality to load mock files for demo
         const mockFile = new File(["dummy content"], "sample_booklist_v2.pdf", { type: "application/pdf" });
-        setFiles(prev => [...prev, mockFile]);
+        setFiles(prev => [...prev, { id: crypto.randomUUID(), file: mockFile }]);
         notify('info', 'Loaded sample file (mock mode).');
     };
 
@@ -66,7 +77,7 @@ const DataIngestion: React.FC<DataIngestionProps> = ({ publishers, onDataIngeste
             const total = files.length;
 
             for (let i = 0; i < total; i++) {
-                const file = files[i];
+                const { file } = files[i];
                 setStatus({ isProcessing: true, message: `Analyzing ${file.name}...`, progress: 10 + Math.round(((i + 1) / total) * 80) });
 
                 // --- MOCK MODE ONLY FOR DEMO FILES ---
@@ -198,19 +209,19 @@ const DataIngestion: React.FC<DataIngestionProps> = ({ publishers, onDataIngeste
                     </div>
 
                     <div className="grid gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                        {files.map((file, idx) => (
-                            <div key={idx} className="flex items-center justify-between bg-white/[0.02] p-4 rounded-xl border border-white/5 group hover:border-white/10 transition-colors">
+                        {files.map((fileWrapper) => (
+                            <div key={fileWrapper.id} className="flex items-center justify-between bg-white/[0.02] p-4 rounded-xl border border-white/5 group hover:border-white/10 transition-colors">
                                 <div className="flex items-center gap-4 overflow-hidden">
                                     <div className="w-10 h-10 rounded-lg bg-zinc-900 flex items-center justify-center text-zinc-500">
-                                        <i className={`fa-regular ${file.type.includes('image') ? 'fa-file-image' : 'fa-file-pdf'}`}></i>
+                                        <i className={`fa-regular ${fileWrapper.file.type.includes('image') ? 'fa-file-image' : 'fa-file-pdf'}`}></i>
                                     </div>
                                     <div>
-                                        <p className="text-white font-medium truncate max-w-md text-sm">{file.name}</p>
-                                        <p className="text-[10px] text-zinc-600 uppercase tracking-wider font-bold">{(file.size / 1024).toFixed(1)} KB</p>
+                                        <p className="text-white font-medium truncate max-w-md text-sm">{fileWrapper.file.name}</p>
+                                        <p className="text-[10px] text-zinc-600 uppercase tracking-wider font-bold">{(fileWrapper.file.size / 1024).toFixed(1)} KB</p>
                                     </div>
                                 </div>
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); removeFile(idx); }}
+                                    onClick={(e) => { e.stopPropagation(); removeFile(fileWrapper.id); }}
                                     className="w-8 h-8 rounded-lg hover:bg-red-500/10 text-zinc-600 hover:text-red-500 transition-colors flex items-center justify-center"
                                 >
                                     <i className="fa-solid fa-xmark"></i>
