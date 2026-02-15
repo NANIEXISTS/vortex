@@ -155,11 +155,12 @@ const AgentChat: React.FC<AgentChatProps> = ({ items, schools }) => {
             <button
               onClick={toggleListening}
               className={`absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isListening ? 'bg-accent text-white animate-pulse' : 'text-secondary hover:text-white'}`}
+              aria-label={isListening ? "Stop listening" : "Start voice input"}
             >
               <i className={`fa-solid ${isListening ? 'fa-microphone-lines' : 'fa-microphone'}`}></i>
             </button>
           </div>
-          <button onClick={handleSend} disabled={!input.trim() || isTyping} className="w-12 h-11 rounded-xl bg-accent text-white hover:bg-opacity-90 disabled:opacity-50 transition-all shadow-lg flex items-center justify-center">
+          <button onClick={handleSend} disabled={!input.trim() || isTyping} className="w-12 h-11 rounded-xl bg-accent text-white hover:bg-opacity-90 disabled:opacity-50 transition-all shadow-lg flex items-center justify-center" aria-label="Send message">
             <i className="fa-solid fa-paper-plane"></i>
           </button>
         </div>

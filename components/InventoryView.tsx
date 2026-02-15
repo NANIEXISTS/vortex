@@ -1,5 +1,4 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { BookItem, School, NotificationType } from '../types';
 
 interface InventoryViewProps {
@@ -19,6 +18,103 @@ enum GroupBy {
 
 type SortOption = 'title' | 'qty_desc' | 'qty_asc' | 'date';
 type ViewType = 'list' | 'grid';
+
+const getSubjectColor = (subject: string) => {
+  const s = (subject || '').toLowerCase();
+  if (s.includes('math')) return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+  if (s.includes('science')) return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+  if (s.includes('english')) return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+  return 'text-zinc-400 bg-zinc-800 border-zinc-700';
+};
+
+interface InventoryItemProps {
+    item: BookItem;
+    isSelected: boolean;
+    onSelect: (id: string) => void;
+    onEdit: (item: BookItem) => void;
+}
+
+const InventoryRow = React.memo<InventoryItemProps>(({ item, isSelected, onSelect, onEdit }) => (
+    <tr
+        className={`transition-colors cursor-pointer group hover:bg-white/[0.02] ${isSelected ? 'bg-indigo-500/10' : ''}`}
+        onClick={() => onSelect(item.id)}
+    >
+        <td className="px-6 py-4">
+            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+            isSelected ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-zinc-700 text-transparent'
+            }`}>
+            <i className="fa-solid fa-check text-[10px]"></i>
+            </div>
+        </td>
+        <td className="px-6 py-4 font-medium text-white">{item.title}</td>
+        <td className="px-6 py-4 text-zinc-400">{item.grade}</td>
+        <td className="px-6 py-4">
+        <span className={`px-2 py-1 rounded-md text-[10px] uppercase font-bold tracking-wide border ${getSubjectColor(item.subject)}`}>
+            {item.subject}
+        </span>
+        </td>
+        <td className="px-6 py-4 text-zinc-400">{item.publisher}</td>
+        <td className="px-6 py-4 text-right font-mono text-zinc-200">{item.quantity}</td>
+        <td className="px-6 py-4 text-right">
+            <button
+            onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+            className="w-8 h-8 rounded hover:bg-white/10 text-zinc-500 hover:text-white transition-colors flex items-center justify-center"
+            >
+                <i className="fa-solid fa-pen text-xs"></i>
+            </button>
+        </td>
+    </tr>
+));
+
+InventoryRow.displayName = 'InventoryRow';
+
+const InventoryCard = React.memo<InventoryItemProps>(({ item, isSelected, onSelect, onEdit }) => (
+    <div
+        onClick={() => onSelect(item.id)}
+        className={`bg-zinc-900/40 backdrop-blur-sm rounded-2xl p-5 border transition-all cursor-pointer relative group flex flex-col justify-between h-[220px] ${
+        isSelected
+        ? 'border-indigo-500 ring-1 ring-indigo-500/50 bg-indigo-500/5'
+        : 'border-white/5 hover:border-zinc-700 hover:bg-zinc-900/80'
+        }`}
+    >
+        <div className="absolute top-4 right-4 z-10 flex gap-2">
+            <button
+            onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+            className="w-5 h-5 rounded hover:bg-white/20 text-zinc-500 hover:text-white transition-colors flex items-center justify-center bg-black/20 backdrop-blur-md"
+            >
+                <i className="fa-solid fa-pen text-[10px]"></i>
+            </button>
+            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${
+                isSelected ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-zinc-700 text-transparent bg-black/20'
+            }`}>
+                <i className="fa-solid fa-check text-xs"></i>
+            </div>
+        </div>
+
+        <div>
+            <span className={`inline-block px-2 py-1 rounded-md text-[10px] uppercase font-bold tracking-wide border mb-3 ${getSubjectColor(item.subject)}`}>
+            {item.subject}
+            </span>
+            <h4 className="font-bold text-white leading-tight line-clamp-3 mb-2 text-sm">
+            {item.title}
+            </h4>
+            <p className="text-xs text-zinc-500">{item.publisher}</p>
+        </div>
+
+        <div className="flex items-end justify-between border-t border-white/5 pt-3 mt-2">
+            <div>
+                <p className="text-[10px] uppercase text-zinc-600 font-bold">Grade</p>
+                <p className="text-xs font-bold text-zinc-300">{item.grade}</p>
+            </div>
+            <div className="text-right">
+                <p className="text-[10px] uppercase text-zinc-600 font-bold">Qty</p>
+                <p className="text-xl font-mono text-white leading-none">{item.quantity}</p>
+            </div>
+        </div>
+    </div>
+));
+
+InventoryCard.displayName = 'InventoryCard';
 
 const InventoryView: React.FC<InventoryViewProps> = ({ items, schools, onDeleteItems, onUpdateQuantity, onUpdateItemDetails, notify }) => {
   const [groupBy, setGroupBy] = useState<GroupBy>(GroupBy.PUBLISHER);
@@ -90,12 +186,14 @@ const InventoryView: React.FC<InventoryViewProps> = ({ items, schools, onDeleteI
     return groups;
   }, [items, schools, groupBy, searchTerm, selectedSubjects, selectedSchools, sortBy]);
 
-  const toggleSelection = (id: string) => {
-    const newSet = new Set(selectedIds);
-    if (newSet.has(id)) newSet.delete(id);
-    else newSet.add(id);
-    setSelectedIds(newSet);
-  };
+  const toggleSelection = useCallback((id: string) => {
+    setSelectedIds(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        return newSet;
+    });
+  }, []);
 
   const toggleSelectAll = () => {
     const allVisibleIds = (Object.values(groupedData).flat() as BookItem[]).map(i => i.id);
@@ -185,14 +283,6 @@ const InventoryView: React.FC<InventoryViewProps> = ({ items, schools, onDeleteI
       });
       setEditingItem(null);
       notify('success', 'Item details updated.');
-  };
-
-  const getSubjectColor = (subject: string) => {
-    const s = (subject || '').toLowerCase();
-    if (s.includes('math')) return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
-    if (s.includes('science')) return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
-    if (s.includes('english')) return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
-    return 'text-zinc-400 bg-zinc-800 border-zinc-700';
   };
 
   const allVisibleCount = Object.values(groupedData).flat().length;
@@ -395,95 +485,29 @@ const InventoryView: React.FC<InventoryViewProps> = ({ items, schools, onDeleteI
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
-                        {groupItems.map((item) => {
-                          const isSelected = selectedIds.has(item.id);
-                          return (
-                            <tr 
-                              key={item.id} 
-                              className={`transition-colors cursor-pointer group hover:bg-white/[0.02] ${isSelected ? 'bg-indigo-500/10' : ''}`}
-                              onClick={() => toggleSelection(item.id)}
-                            >
-                              <td className="px-6 py-4">
-                                 <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                                    isSelected ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-zinc-700 text-transparent'
-                                 }`}>
-                                    <i className="fa-solid fa-check text-[10px]"></i>
-                                 </div>
-                              </td>
-                              <td className="px-6 py-4 font-medium text-white">{item.title}</td>
-                              <td className="px-6 py-4 text-zinc-400">{item.grade}</td>
-                              <td className="px-6 py-4">
-                                <span className={`px-2 py-1 rounded-md text-[10px] uppercase font-bold tracking-wide border ${getSubjectColor(item.subject)}`}>
-                                  {item.subject}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 text-zinc-400">{item.publisher}</td>
-                              <td className="px-6 py-4 text-right font-mono text-zinc-200">{item.quantity}</td>
-                              <td className="px-6 py-4 text-right">
-                                  <button 
-                                    onClick={(e) => { e.stopPropagation(); setEditingItem(item); }}
-                                    className="w-8 h-8 rounded hover:bg-white/10 text-zinc-500 hover:text-white transition-colors flex items-center justify-center"
-                                  >
-                                      <i className="fa-solid fa-pen text-xs"></i>
-                                  </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
+                        {groupItems.map((item) => (
+                            <InventoryRow
+                                key={item.id}
+                                item={item}
+                                isSelected={selectedIds.has(item.id)}
+                                onSelect={toggleSelection}
+                                onEdit={setEditingItem}
+                            />
+                        ))}
                       </tbody>
                     </table>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {groupItems.map((item) => {
-                      const isSelected = selectedIds.has(item.id);
-                      return (
-                        <div 
-                          key={item.id} 
-                          onClick={() => toggleSelection(item.id)}
-                          className={`bg-zinc-900/40 backdrop-blur-sm rounded-2xl p-5 border transition-all cursor-pointer relative group flex flex-col justify-between h-[220px] ${
-                            isSelected 
-                            ? 'border-indigo-500 ring-1 ring-indigo-500/50 bg-indigo-500/5' 
-                            : 'border-white/5 hover:border-zinc-700 hover:bg-zinc-900/80'
-                          }`}
-                        >
-                          <div className="absolute top-4 right-4 z-10 flex gap-2">
-                             <button 
-                                onClick={(e) => { e.stopPropagation(); setEditingItem(item); }}
-                                className="w-5 h-5 rounded hover:bg-white/20 text-zinc-500 hover:text-white transition-colors flex items-center justify-center bg-black/20 backdrop-blur-md"
-                              >
-                                  <i className="fa-solid fa-pen text-[10px]"></i>
-                              </button>
-                              <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${
-                                  isSelected ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-zinc-700 text-transparent bg-black/20'
-                              }`}>
-                                  <i className="fa-solid fa-check text-xs"></i>
-                              </div>
-                          </div>
-
-                          <div>
-                             <span className={`inline-block px-2 py-1 rounded-md text-[10px] uppercase font-bold tracking-wide border mb-3 ${getSubjectColor(item.subject)}`}>
-                                {item.subject}
-                              </span>
-                              <h4 className="font-bold text-white leading-tight line-clamp-3 mb-2 text-sm">
-                                {item.title}
-                              </h4>
-                              <p className="text-xs text-zinc-500">{item.publisher}</p>
-                          </div>
-
-                          <div className="flex items-end justify-between border-t border-white/5 pt-3 mt-2">
-                              <div>
-                                  <p className="text-[10px] uppercase text-zinc-600 font-bold">Grade</p>
-                                  <p className="text-xs font-bold text-zinc-300">{item.grade}</p>
-                              </div>
-                              <div className="text-right">
-                                  <p className="text-[10px] uppercase text-zinc-600 font-bold">Qty</p>
-                                  <p className="text-xl font-mono text-white leading-none">{item.quantity}</p>
-                              </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {groupItems.map((item) => (
+                        <InventoryCard
+                            key={item.id}
+                            item={item}
+                            isSelected={selectedIds.has(item.id)}
+                            onSelect={toggleSelection}
+                            onEdit={setEditingItem}
+                        />
+                    ))}
                   </div>
                 )}
               </div>

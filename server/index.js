@@ -39,10 +39,11 @@ const authenticateToken = (req, res, next) => {
 
 /* --- Routes --- */
 
-// Login
+// Login (MERGED: Kept Security Validation)
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
 
+    // Security Fix: Validation
     if (typeof username !== 'string' || !username.trim() || username.length > 255) {
         return res.status(400).json({ success: false, message: 'Invalid or missing username' });
     }
@@ -88,10 +89,11 @@ app.get('/api/data', authenticateToken, async (req, res) => {
     }
 });
 
-// Ingest Data
+// Ingest Data (MERGED: Kept Security Validation)
 app.post('/api/ingest', authenticateToken, async (req, res) => {
     const { schoolName, items } = req.body;
 
+    // Security Fix: Validation
     if (typeof schoolName !== 'string' || !schoolName.trim() || schoolName.length > 255) {
         return res.status(400).json({ error: 'Invalid or missing schoolName' });
     }
@@ -99,6 +101,7 @@ app.post('/api/ingest', authenticateToken, async (req, res) => {
         return res.status(400).json({ error: 'items must be an array' });
     }
 
+    // Security Fix: Detailed Item Validation
     for (const item of items) {
         if (!item || typeof item !== 'object' || Array.isArray(item)) {
             return res.status(400).json({ error: 'Invalid item in list' });
@@ -145,7 +148,7 @@ app.post('/api/ingest', authenticateToken, async (req, res) => {
     }
 });
 
-// Analyze Document (AI)
+// Analyze Document (MERGED: Kept Main Branch Async Logic for Performance)
 app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
@@ -153,12 +156,12 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
         const publishers = await prisma.publisher.findMany();
         const publisherListString = publishers.map(p => p.name).join('", "');
 
-        // Read file & Convert to base64
-        const fileBuffer = fs.readFileSync(req.file.path);
+        // Read file & Convert to base64 (Async from Main Branch)
+        const fileBuffer = await fs.promises.readFile(req.file.path);
         const base64Data = fileBuffer.toString('base64');
         const mimeType = req.file.mimetype;
 
-        const modelName = 'gemini-flash-latest'; // Working model
+        const modelName = 'gemini-flash-latest';
 
         const prompt = `
             You are Vortex Data Ingestion Engine.
@@ -198,8 +201,8 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
             }
         });
 
-        // Cleanup uploaded file
-        fs.unlinkSync(req.file.path);
+        // Cleanup uploaded file (Async from Main Branch)
+        await fs.promises.unlink(req.file.path);
 
         let text = "{}";
         if (response.candidates && response.candidates[0] && response.candidates[0].content && response.candidates[0].content.parts) {
@@ -219,15 +222,22 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
 
     } catch (e) {
         console.error("AI Error:", e);
-        if (req.file) fs.unlinkSync(req.file.path); // Cleanup on error
+        if (req.file) {
+            try {
+                await fs.promises.unlink(req.file.path);
+            } catch (unlinkError) {
+                console.error("Error cleaning up file:", unlinkError);
+            }
+        }
         res.status(500).json({ error: 'AI Processing Failed' });
     }
 });
 
-// Chat with Agent (AI)
+// Chat with Agent (MERGED: Kept Security Validation)
 app.post('/api/chat', authenticateToken, async (req, res) => {
     const { query, context } = req.body;
 
+    // Security Fix: Validation
     if (typeof query !== 'string' || !query.trim() || query.length > 2000) {
         return res.status(400).json({ error: 'Invalid or missing query' });
     }
@@ -258,59 +268,4 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
             contextString = `
                 Inventory Data Summary:
                 - Total Unique Book Items: ${itemCount}
-                - Total Schools Serviced: ${schoolCount}
-                - School Names: ${schoolNames}
-                - Publisher Volume Distribution: ${publisherStatsStr}
-
-                (Note: "Sales" in this context refers to the quantity of books in the inventory requests).
-            `;
-        }
-
-        const prompt = `
-            You are Vortex Agent, an AI supply chain assistant.
-
-            User Query: "${query}"
-
-            Context Data:
-            ${contextString}
-
-            Instructions:
-            - Answer the user's question based strictly on the provided context data.
-            - If the user asks about "sales", refer to the 'quantity' of books as sales volume.
-            - Be professional, concise, and helpful.
-            - If you cannot find the answer in the data, state that gracefully.
-            - Do not mention 'JSON' or technical data structures to the user. Speak naturally.
-        `;
-
-        const response = await ai.models.generateContent({
-            model: modelName,
-            contents: {
-                parts: [
-                    { text: prompt }
-                ]
-            }
-        });
-
-        let text = "I'm not sure how to answer that.";
-        if (response.candidates && response.candidates[0] && response.candidates[0].content && response.candidates[0].content.parts) {
-            text = response.candidates[0].content.parts[0].text || text;
-        }
-        res.json({ response: text });
-
-    } catch (e) {
-        console.error("AI Chat Error Detailed:", e);
-        if (e.response) {
-            console.error("AI Response Error:", e.response.data);
-        }
-        res.status(500).json({ error: 'Chat Processing Failed', details: e.message });
-    }
-});
-
-// Fallback to Frontend
-app.use((req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
-});
-
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-});
+                - Total
