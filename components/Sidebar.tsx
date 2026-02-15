@@ -59,7 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isOpen, onCl
                             <p className="text-[10px] text-accent font-bold tracking-[0.2em] uppercase mt-1">Systems</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="md:hidden text-secondary hover:text-white transition-colors">
+                    <button onClick={onClose} className="md:hidden text-secondary hover:text-white transition-colors" aria-label="Close sidebar">
                         <i className="fa-solid fa-xmark text-xl"></i>
                     </button>
                 </div>
@@ -78,6 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isOpen, onCl
                                 ? 'bg-accent/10 text-white'
                                 : 'text-secondary hover:text-white hover:bg-white/[0.03]'
                                 }`}
+                            aria-current={currentView === item.id ? 'page' : undefined}
                         >
                             {currentView === item.id && (
                                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full shadow-[0_0_10px_#8b5cf6]"></div>

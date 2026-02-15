@@ -49,7 +49,7 @@ const Toast: React.FC<{ note: Notification; onDismiss: () => void }> = ({ note, 
     <div className={`pointer-events-auto min-w-[300px] p-4 rounded-xl border backdrop-blur-md shadow-lg animate-slide-up flex items-center gap-3 ${getStyles()}`}>
       <i className={`fa-solid ${getIcon()} text-lg`}></i>
       <p className="text-sm font-semibold text-white">{note.message}</p>
-      <button onClick={onDismiss} className="ml-auto text-white/50 hover:text-white transition-colors">
+      <button onClick={onDismiss} className="ml-auto text-white/50 hover:text-white transition-colors" aria-label="Dismiss notification">
         <i className="fa-solid fa-xmark"></i>
       </button>
     </div>
