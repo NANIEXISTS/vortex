@@ -448,6 +448,7 @@ function App() {
                 <button
                     onClick={() => setIsSidebarOpen(true)}
                     className="fixed top-4 left-4 z-20 md:hidden w-10 h-10 glass-panel rounded-xl flex items-center justify-center text-white shadow-lg"
+                    aria-label="Toggle sidebar"
                 >
                     <i className="fa-solid fa-bars"></i>
                 </button>
@@ -475,6 +476,7 @@ function App() {
                 <button
                     onClick={() => setShowAiPlayground(true)}
                     className="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-tr from-accent to-blue-500 text-white rounded-2xl shadow-xl shadow-accent/20 transition-all duration-300 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] flex items-center justify-center z-50 group border border-white/10 hover:scale-[1.8] hover:shadow-[0_0_80px_rgba(139,92,246,0.8)]"
+                    aria-label="Open AI Assistant"
                 >
                     <i className="fa-solid fa-hurricane text-xl animate-spin-reverse-slow group-hover:animate-spin-reverse"></i>
                 </button>
@@ -486,6 +488,7 @@ function App() {
                         <button
                             onClick={() => setShowAiPlayground(false)}
                             className="absolute top-4 right-4 w-8 h-8 hover:bg-white/10 rounded-full flex items-center justify-center text-secondary hover:text-white transition-colors z-20"
+                            aria-label="Close AI Assistant"
                         >
                             <i className="fa-solid fa-xmark"></i>
                         </button>
