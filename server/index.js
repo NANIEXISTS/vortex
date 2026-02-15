@@ -268,4 +268,48 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
             contextString = `
                 Inventory Data Summary:
                 - Total Unique Book Items: ${itemCount}
-                - Total
+                - Total Schools: ${schoolCount} (${schoolNames})
+                - Publisher Distribution: ${publisherStatsStr}
+            `;
+        }
+
+        const prompt = `
+            You are a helpful assistant for the Vortex Inventory System.
+            Use the provided inventory data context to answer the user's question.
+
+            Context:
+            ${contextString}
+
+            User Query: ${query}
+        `;
+
+        const response = await ai.models.generateContent({
+            model: modelName,
+            contents: {
+                parts: [
+                    { text: prompt }
+                ]
+            }
+        });
+
+        let text = "I'm sorry, I couldn't generate a response.";
+        if (response.candidates && response.candidates[0] && response.candidates[0].content && response.candidates[0].content.parts) {
+            text = response.candidates[0].content.parts[0].text;
+        }
+
+        res.json({ response: text });
+
+    } catch (e) {
+        console.error("AI Chat Error:", e);
+        res.status(500).json({ error: 'AI Chat Failed' });
+    }
+});
+
+// Start Server
+if (require.main === module) {
+    app.listen(port, () => {
+        console.log(`Server running on port ${port}`);
+    });
+}
+
+module.exports = app;
