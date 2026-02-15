@@ -42,6 +42,14 @@ const authenticateToken = (req, res, next) => {
 // Login
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
+
+    if (typeof username !== 'string' || !username.trim() || username.length > 255) {
+        return res.status(400).json({ success: false, message: 'Invalid or missing username' });
+    }
+    if (typeof password !== 'string' || !password.trim() || password.length > 255) {
+        return res.status(400).json({ success: false, message: 'Invalid or missing password' });
+    }
+
     try {
         const user = await prisma.user.findUnique({ where: { username } });
         if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials' });
@@ -84,7 +92,27 @@ app.get('/api/data', authenticateToken, async (req, res) => {
 app.post('/api/ingest', authenticateToken, async (req, res) => {
     const { schoolName, items } = req.body;
 
-    if (!schoolName || !items) return res.status(400).json({ error: 'Missing data' });
+    if (typeof schoolName !== 'string' || !schoolName.trim() || schoolName.length > 255) {
+        return res.status(400).json({ error: 'Invalid or missing schoolName' });
+    }
+    if (!Array.isArray(items)) {
+        return res.status(400).json({ error: 'items must be an array' });
+    }
+
+    for (const item of items) {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+            return res.status(400).json({ error: 'Invalid item in list' });
+        }
+        if (typeof item.title !== 'string' || !item.title.trim() || item.title.length > 255) {
+            return res.status(400).json({ error: 'Invalid item title' });
+        }
+        if (typeof item.publisher !== 'string' || !item.publisher.trim() || item.publisher.length > 255) {
+            return res.status(400).json({ error: 'Invalid item publisher' });
+        }
+        if (typeof item.quantity !== 'number') {
+            return res.status(400).json({ error: 'Invalid item quantity' });
+        }
+    }
 
     try {
         let school = await prisma.school.findUnique({ where: { name: schoolName } });
@@ -133,9 +161,9 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
         const modelName = 'gemini-flash-latest'; // Working model
 
         const prompt = `
-            You are Vortex Data Ingestion Engine. 
+            You are Vortex Data Ingestion Engine.
             Analyze the uploaded document.
-            
+
             Extract the following information in RAW JSON format:
             {
               "schoolName": "...",
@@ -149,14 +177,14 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
                 }
               ]
             }
-        
+
             STRICT NORMALIZATION RULES FOR PUBLISHERS:
             You MUST map every publisher found in the image to one of the following strings EXACTLY:
             ["${publisherListString}"]
-            
+
             If a publisher on the list is "OUP" or "Oxford", map it to the closest match in the list above.
             If the publisher is NOT in the allowed list, map it to "Other".
-            
+
             IMPORTANT: Return ONLY the JSON object. No markdown.
         `;
 
@@ -200,7 +228,12 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
 app.post('/api/chat', authenticateToken, async (req, res) => {
     const { query, context } = req.body;
 
-    if (!query) return res.status(400).json({ error: 'Missing query' });
+    if (typeof query !== 'string' || !query.trim() || query.length > 2000) {
+        return res.status(400).json({ error: 'Invalid or missing query' });
+    }
+    if (context && (typeof context !== 'object' || Array.isArray(context))) {
+        return res.status(400).json({ error: 'Invalid context' });
+    }
 
     try {
         console.log("Received chat query:", query);
@@ -228,19 +261,19 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
                 - Total Schools Serviced: ${schoolCount}
                 - School Names: ${schoolNames}
                 - Publisher Volume Distribution: ${publisherStatsStr}
-                
+
                 (Note: "Sales" in this context refers to the quantity of books in the inventory requests).
             `;
         }
 
         const prompt = `
             You are Vortex Agent, an AI supply chain assistant.
-            
+
             User Query: "${query}"
-            
+
             Context Data:
             ${contextString}
-            
+
             Instructions:
             - Answer the user's question based strictly on the provided context data.
             - If the user asks about "sales", refer to the 'quantity' of books as sales volume.
