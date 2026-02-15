@@ -126,7 +126,7 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
         const publisherListString = publishers.map(p => p.name).join('", "');
 
         // Read file & Convert to base64
-        const fileBuffer = fs.readFileSync(req.file.path);
+        const fileBuffer = await fs.promises.readFile(req.file.path);
         const base64Data = fileBuffer.toString('base64');
         const mimeType = req.file.mimetype;
 
@@ -171,7 +171,7 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
         });
 
         // Cleanup uploaded file
-        fs.unlinkSync(req.file.path);
+        await fs.promises.unlink(req.file.path);
 
         let text = "{}";
         if (response.candidates && response.candidates[0] && response.candidates[0].content && response.candidates[0].content.parts) {
@@ -191,7 +191,13 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
 
     } catch (e) {
         console.error("AI Error:", e);
-        if (req.file) fs.unlinkSync(req.file.path); // Cleanup on error
+        if (req.file) {
+            try {
+                await fs.promises.unlink(req.file.path);
+            } catch (unlinkError) {
+                console.error("Error cleaning up file:", unlinkError);
+            }
+        }
         res.status(500).json({ error: 'AI Processing Failed' });
     }
 });
