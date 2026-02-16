@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import DataIngestion from './components/DataIngestion';
@@ -9,6 +8,7 @@ import ProfileView from './components/ProfileView';
 import SchoolDispatch from './components/SchoolDispatch';
 import PublisherSetup from './components/PublisherSetup';
 import ToastContainer from './components/Toast';
+import UserManagement from './components/UserManagement';
 import { ViewMode, BookItem, School, Notification, NotificationType } from './types';
 
 // --- Boot Animation Component ---
@@ -16,22 +16,15 @@ const BootScreen = ({ onAnimationComplete }: { onAnimationComplete: () => void }
     const [stage, setStage] = useState<'enter' | 'spin' | 'exit'>('enter');
 
     useEffect(() => {
-        // Stage 1: Zoom In (Enter)
         setTimeout(() => setStage('spin'), 800);
-
-        // Stage 2: Spin for a bit, then Zoom Out (Exit)
         setTimeout(() => setStage('exit'), 2500);
-
-        // Stage 3: Complete
         setTimeout(() => {
             onAnimationComplete();
-        }, 3000); // Allow time for exit animation
+        }, 3000);
     }, [onAnimationComplete]);
 
     return (
         <div className={`fixed inset-0 bg-[#050508] z-[100] flex items-center justify-center transition-opacity duration-500 ${stage === 'exit' ? 'opacity-0' : 'opacity-100'}`}>
-
-            {/* Icon Container with Transitions */}
             <div
                 className={`relative flex items-center justify-center transition-all duration-700 ease-in-out
           ${stage === 'enter' ? 'scale-0 opacity-0' : ''}
@@ -39,15 +32,10 @@ const BootScreen = ({ onAnimationComplete }: { onAnimationComplete: () => void }
           ${stage === 'exit' ? 'scale-0 opacity-0 rotate-180' : ''}
         `}
             >
-                {/* Glow Effect */}
                 <div className="absolute inset-0 bg-indigo-500/30 blur-[50px] rounded-full animate-pulse"></div>
-
-                {/* The Icon - Spins Anticlockwise */}
                 <div className="relative z-10">
                     <i className={`fa-solid fa-hurricane text-8xl text-white drop-shadow-[0_0_30px_rgba(139,92,246,0.6)] ${stage === 'spin' ? 'animate-spin-reverse' : ''}`} style={{ animationDuration: '3s' }}></i>
                 </div>
-
-                {/* Orbit Rings */}
                 <div className={`absolute w-40 h-40 border-2 border-indigo-500/30 rounded-full ${stage === 'spin' ? 'animate-spin-reverse' : ''}`} style={{ animationDuration: '4s' }}></div>
                 <div className={`absolute w-52 h-52 border border-purple-500/20 rounded-full ${stage === 'spin' ? 'animate-spin-reverse' : ''}`} style={{ animationDuration: '5s', animationDirection: 'reverse' }}></div>
             </div>
@@ -57,16 +45,9 @@ const BootScreen = ({ onAnimationComplete }: { onAnimationComplete: () => void }
 
 // --- Login Component ---
 const LoginScreen = ({ onLogin, notify }: { onLogin: (token: string, user: any) => void, notify: (type: NotificationType, message: string) => void }) => {
-    const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
-
-    // Form States
+    const [mode, setMode] = useState<'login' | 'forgot'>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-
-    // Register specific
-    const [fullName, setFullName] = useState('');
-    const [confirmPass, setConfirmPass] = useState('');
-
     const [isLoading, setIsLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -97,7 +78,6 @@ const LoginScreen = ({ onLogin, notify }: { onLogin: (token: string, user: any) 
 
     const getTitle = () => {
         switch (mode) {
-            case 'register': return 'Create Account';
             case 'forgot': return 'Reset Password';
             default: return 'Welcome Back';
         }
@@ -105,7 +85,6 @@ const LoginScreen = ({ onLogin, notify }: { onLogin: (token: string, user: any) 
 
     const getSubtitle = () => {
         switch (mode) {
-            case 'register': return 'Join the Vortex network.';
             case 'forgot': return 'We will send you a recovery link.';
             default: return 'Sign in to access the Vortex System.';
         }
@@ -113,7 +92,6 @@ const LoginScreen = ({ onLogin, notify }: { onLogin: (token: string, user: any) 
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#050508]">
-            {/* Background Ambience */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
 
             <div className="w-full max-w-md bg-[#161624]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl relative z-10 animate-slide-up">
@@ -126,23 +104,6 @@ const LoginScreen = ({ onLogin, notify }: { onLogin: (token: string, user: any) 
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
-
-                    {mode === 'register' && (
-                        <div className="animate-fade-in">
-                            <label className="block text-xs font-bold text-zinc-500 uppercase mb-1 ml-1">Full Name</label>
-                            <div className="relative">
-                                <i className="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"></i>
-                                <input
-                                    type="text"
-                                    required
-                                    value={fullName}
-                                    onChange={(e) => setFullName(e.target.value)}
-                                    className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder-zinc-700"
-                                />
-                            </div>
-                        </div>
-                    )}
-
                     <div>
                         <label className="block text-xs font-bold text-zinc-500 uppercase mb-1 ml-1">Username</label>
                         <div className="relative">
@@ -167,22 +128,6 @@ const LoginScreen = ({ onLogin, notify }: { onLogin: (token: string, user: any) 
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder-zinc-700"
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {mode === 'register' && (
-                        <div className="animate-fade-in">
-                            <label className="block text-xs font-bold text-zinc-500 uppercase mb-1 ml-1">Confirm Password</label>
-                            <div className="relative">
-                                <i className="fa-solid fa-shield-halved absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"></i>
-                                <input
-                                    type="password"
-                                    required
-                                    value={confirmPass}
-                                    onChange={(e) => setConfirmPass(e.target.value)}
                                     className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder-zinc-700"
                                 />
                             </div>
@@ -216,7 +161,6 @@ const LoginScreen = ({ onLogin, notify }: { onLogin: (token: string, user: any) 
                             <>
                                 <span>
                                     {mode === 'login' && 'Enter Vortex'}
-                                    {mode === 'register' && 'Sign Up'}
                                     {mode === 'forgot' && 'Send Reset Link'}
                                 </span>
                                 <i className="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
@@ -226,15 +170,9 @@ const LoginScreen = ({ onLogin, notify }: { onLogin: (token: string, user: any) 
                 </form>
 
                 <div className="mt-6 text-center text-sm space-y-2">
-                    {mode === 'login' && (
+                    {mode === 'forgot' && (
                         <p className="text-zinc-500">
-                            New to Vortex?{' '}
-                            <button onClick={() => setMode('register')} className="text-white font-bold hover:underline">Create User</button>
-                        </p>
-                    )}
-                    {(mode === 'register' || mode === 'forgot') && (
-                        <p className="text-zinc-500">
-                            Already have an account?{' '}
+                            Remember your password?{' '}
                             <button onClick={() => setMode('login')} className="text-white font-bold hover:underline">Back to Login</button>
                         </p>
                     )}
@@ -256,6 +194,7 @@ function App() {
     const [currentView, setCurrentView] = useState<ViewMode>(ViewMode.DASHBOARD);
     const [showAiPlayground, setShowAiPlayground] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [currentUser, setCurrentUser] = useState<{ username: string; role: string } | null>(null);
 
     // App State Phases
     const [isBooting, setIsBooting] = useState(true);
@@ -277,6 +216,18 @@ function App() {
     useEffect(() => {
         if (isAuthenticated) {
             const token = localStorage.getItem('vortex_token');
+
+            // Fetch User Data
+            fetch('/api/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.user) setCurrentUser(data.user);
+            })
+            .catch(console.error);
+
+            // Fetch App Data
             fetch('/api/data', {
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -284,7 +235,6 @@ function App() {
             })
                 .then(res => {
                     if (res.status === 401 || res.status === 403) {
-                        // Token invalid
                         setIsAuthenticated(false);
                         localStorage.removeItem('vortex_token');
                         throw new Error('Unauthorized');
@@ -321,14 +271,15 @@ function App() {
 
     const handleLogin = (token: string, user: any) => {
         setIsAuthenticated(true);
+        setCurrentUser(user);
         localStorage.setItem('vortex_token', token);
         notify('success', `Welcome, ${user.username}!`);
     };
 
     const handleLogout = () => {
         setIsAuthenticated(false);
+        setCurrentUser(null);
         localStorage.removeItem('vortex_token');
-        // Reset state
         setCurrentView(ViewMode.DASHBOARD);
         setSchools([]);
         setItems([]);
@@ -354,7 +305,6 @@ function App() {
                     setItems(data.items.map((i: any) => ({ ...i, createdAt: new Date(i.createdAt) })));
                     notify('success', 'Synced!');
 
-                    // Refresh schools too
                     fetch('/api/data', { headers: { 'Authorization': `Bearer ${token}` } })
                         .then(r => r.json())
                         .then(d => { if (d.schools) setSchools(d.schools || []); });
@@ -414,6 +364,8 @@ function App() {
                         notify={notify}
                     />
                 );
+            case ViewMode.USERS:
+                return <UserManagement notify={notify} />;
             case ViewMode.CONFIG:
                 return <PublisherSetup initialPublishers={publishers} onComplete={handlePublisherSetupComplete} notify={notify} />;
             case ViewMode.PROFILE:
@@ -425,12 +377,10 @@ function App() {
 
     // --- Main Render Flow ---
 
-    // 1. Boot Animation (Always runs first on refresh)
     if (isBooting) {
         return <BootScreen onAnimationComplete={() => setIsBooting(false)} />;
     }
 
-    // 2. Login Screen (If not authenticated)
     if (!isAuthenticated) {
         return (
             <>
@@ -440,7 +390,6 @@ function App() {
         );
     }
 
-    // 3. Main App Layout
     return (
         <div className="flex h-screen bg-background text-primary font-sans overflow-hidden selection:bg-accent/30 animate-fade-in">
 
@@ -461,6 +410,7 @@ function App() {
                     isOpen={isSidebarOpen}
                     onClose={() => setIsSidebarOpen(false)}
                     onLogout={handleLogout}
+                    user={currentUser}
                 />
             )}
 

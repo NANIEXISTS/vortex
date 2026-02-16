@@ -39,7 +39,8 @@ export enum ViewMode {
   UPLOAD = 'UPLOAD',
   INVENTORY = 'INVENTORY',
   CHAT = 'CHAT',
-  PROFILE = 'PROFILE'
+  PROFILE = 'PROFILE',
+  USERS = 'USERS'
 }
 
 export interface AnalysisResult {
