@@ -1,5 +1,4 @@
-
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { analyzeDocument } from '../services/geminiService';
 import { BookItem, ProcessingStatus, NotificationType } from '../types';
 
@@ -8,9 +7,16 @@ interface FileWithId {
     file: File;
 }
 
+interface AnalyzedBatch {
+    id: string;
+    fileName: string;
+    schoolName: string;
+    items: any[];
+}
+
 interface DataIngestionProps {
     publishers: string[];
-    onDataIngested: (schoolName: string, items: Omit<BookItem, 'id' | 'schoolId'>[]) => void;
+    onDataIngested: (schoolName: string, items: Omit<BookItem, 'id' | 'schoolId'>[]) => Promise<void> | void;
     notify: (type: NotificationType, message: string) => void;
 }
 
@@ -19,6 +25,11 @@ const DataIngestion: React.FC<DataIngestionProps> = ({ publishers, onDataIngeste
     const [files, setFiles] = useState<FileWithId[]>([]);
     const [status, setStatus] = useState<ProcessingStatus>({ isProcessing: false, message: '', progress: 0 });
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // Review Mode State
+    const [isReviewing, setIsReviewing] = useState(false);
+    const [analyzedBatches, setAnalyzedBatches] = useState<AnalyzedBatch[]>([]);
+    const [isSaving, setIsSaving] = useState(false);
 
     const handleDrag = (e: React.DragEvent) => {
         e.preventDefault();
@@ -62,7 +73,6 @@ const DataIngestion: React.FC<DataIngestionProps> = ({ publishers, onDataIngeste
     const clearFiles = () => setFiles([]);
 
     const loadSampleData = () => {
-        // Hidden functionality to load mock files for demo
         const mockFile = new File(["dummy content"], "sample_booklist_v2.pdf", { type: "application/pdf" });
         setFiles(prev => [...prev, { id: crypto.randomUUID(), file: mockFile }]);
         notify('info', 'Loaded sample file (mock mode).');
@@ -72,57 +82,173 @@ const DataIngestion: React.FC<DataIngestionProps> = ({ publishers, onDataIngeste
         if (files.length === 0) return;
         setStatus({ isProcessing: true, message: 'Initializing AI Engine...', progress: 10 });
 
+        const results: AnalyzedBatch[] = [];
+
         try {
-            let successCount = 0;
             const total = files.length;
 
             for (let i = 0; i < total; i++) {
-                const { file } = files[i];
-                setStatus({ isProcessing: true, message: `Analyzing ${file.name}...`, progress: 10 + Math.round(((i + 1) / total) * 80) });
+                const { file, id } = files[i];
+                setStatus({ isProcessing: true, message: `Analyzing ${file.name}...`, progress: 10 + Math.round(((i) / total) * 80) });
 
-                // --- MOCK MODE ONLY FOR DEMO FILES ---
+                // Fake progress interval during await
+                const interval = setInterval(() => {
+                    setStatus(prev => ({
+                        ...prev,
+                        progress: Math.min(prev.progress + 2, 90) // Cap at 90% until done
+                    }));
+                }, 500);
+
                 let schoolName = "Unknown School";
                 let items: any[] = [];
 
-                if (file.name.includes('sample') || file.name.includes('mock')) {
-                    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate delay
-                    schoolName = "St. Xavier's High School";
-                    items = [
-                        { title: "Mathematics Today", publisher: "Pearson", originalPublisherString: "Pearson Education", grade: "5", quantity: 120, subject: "Math" },
-                        { title: "Science Explorer", publisher: "Macmillan", originalPublisherString: "Macmillan", grade: "5", quantity: 120, subject: "Science" },
-                        { title: "Junior English", publisher: "Orient Blackswan", originalPublisherString: "Blackswan", grade: "4", quantity: 85, subject: "English" }
-                    ];
-                } else {
-                    // Real AI processing via Backend
-                    const result = await analyzeDocument(file);
-                    schoolName = result.schoolName;
-                    items = result.items.map((item: any) => ({
-                        title: item.title,
-                        publisher: item.publisher,
-                        originalPublisherString: item.publisher,
-                        grade: item.grade,
-                        quantity: item.quantity,
-                        subject: item.subject
-                    }));
+                try {
+                    if (file.name.includes('sample') || file.name.includes('mock')) {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        schoolName = "St. Xavier's High School";
+                        items = [
+                            { title: "Mathematics Today", publisher: "Pearson", originalPublisherString: "Pearson Education", grade: "5", quantity: 120, subject: "Math" },
+                            { title: "Science Explorer", publisher: "Macmillan", originalPublisherString: "Macmillan", grade: "5", quantity: 120, subject: "Science" },
+                            { title: "Junior English", publisher: "Orient Blackswan", originalPublisherString: "Blackswan", grade: "4", quantity: 85, subject: "English" }
+                        ];
+                    } else {
+                        const result = await analyzeDocument(file);
+                        schoolName = result.schoolName;
+                        items = result.items.map((item: any) => ({
+                            title: item.title,
+                            publisher: item.publisher,
+                            originalPublisherString: item.publisher,
+                            grade: item.grade,
+                            quantity: item.quantity,
+                            subject: item.subject
+                        }));
+                    }
+                    results.push({ id, fileName: file.name, schoolName, items });
+                } finally {
+                    clearInterval(interval);
                 }
-
-                onDataIngested(schoolName, items);
-                successCount++;
             }
 
-            setStatus({ isProcessing: false, message: 'Ingestion Complete', progress: 100 });
-            setFiles([]);
-            notify('success', `Successfully processed ${successCount} documents!`);
-
-            setTimeout(() => setStatus({ isProcessing: false, message: '', progress: 0 }), 3000);
+            setStatus({ isProcessing: false, message: 'Analysis Complete', progress: 100 });
+            setAnalyzedBatches(results);
+            setIsReviewing(true);
 
         } catch (error) {
             console.error(error);
             setStatus({ isProcessing: false, message: 'Processing Error', progress: 0, error: String(error) });
-            notify('error', 'AI Processing Failed. Please ensuring backend is running and file is valid.');
+            notify('error', 'AI Processing Failed. Please ensure backend is running and file is valid.');
         }
     };
 
+    const handleConfirmImport = async () => {
+        setIsSaving(true);
+        try {
+            for (const batch of analyzedBatches) {
+                await onDataIngested(batch.schoolName, batch.items);
+            }
+            notify('success', `Successfully imported ${analyzedBatches.length} documents!`);
+
+            // Reset
+            setIsReviewing(false);
+            setAnalyzedBatches([]);
+            setFiles([]);
+            setStatus({ isProcessing: false, message: '', progress: 0 });
+
+        } catch (e) {
+            notify('error', 'Failed to save data.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleCancelReview = () => {
+        setIsReviewing(false);
+        setAnalyzedBatches([]);
+        setStatus({ isProcessing: false, message: '', progress: 0 });
+    };
+
+    // --- RENDER: REVIEW SCREEN ---
+    if (isReviewing) {
+        return (
+            <div className="p-8 lg:p-12 max-w-6xl mx-auto min-h-screen animate-fade-in pb-32">
+                 <div className="text-center mb-12">
+                    <h2 className="text-4xl font-extrabold text-white mb-4">Review Extracted Data</h2>
+                    <p className="text-zinc-400 text-lg">Please verify the information before importing.</p>
+                </div>
+
+                <div className="space-y-8">
+                    {analyzedBatches.map((batch) => (
+                        <div key={batch.id} className="glass-panel p-6 rounded-3xl border border-white/10">
+                            <div className="flex items-center gap-4 mb-6 border-b border-white/5 pb-4">
+                                <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 text-xl">
+                                    <i className="fa-solid fa-school"></i>
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-white">{batch.schoolName}</h3>
+                                    <p className="text-sm text-zinc-500 flex items-center gap-2">
+                                        <i className="fa-solid fa-file"></i> {batch.fileName}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead>
+                                        <tr className="border-b border-white/10 text-xs font-bold text-zinc-500 uppercase">
+                                            <th className="pb-3 pl-2">Title</th>
+                                            <th className="pb-3">Publisher</th>
+                                            <th className="pb-3 text-center">Qty</th>
+                                            <th className="pb-3">Subject</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/5">
+                                        {batch.items.map((item: any, idx: number) => (
+                                            <tr key={idx} className="hover:bg-white/5 transition-colors">
+                                                <td className="py-3 pl-2 font-medium text-white">{item.title}</td>
+                                                <td className="py-3 text-zinc-300">
+                                                    {item.publisher}
+                                                    {item.publisher !== item.originalPublisherString && (
+                                                        <span className="ml-2 text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-zinc-500 line-through opacity-70">
+                                                            {item.originalPublisherString}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="py-3 text-center font-bold text-emerald-400">{item.quantity}</td>
+                                                <td className="py-3 text-zinc-400">{item.subject}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="fixed bottom-0 left-0 right-0 p-6 bg-[#050508]/90 backdrop-blur-xl border-t border-white/10 z-50 md:ml-64 flex justify-end gap-4">
+                    <button
+                        onClick={handleCancelReview}
+                        disabled={isSaving}
+                        className="px-6 py-3 rounded-xl font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleConfirmImport}
+                        disabled={isSaving}
+                        className="px-8 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/25 flex items-center gap-2"
+                    >
+                        {isSaving ? (
+                            <><i className="fa-solid fa-circle-notch fa-spin"></i> Importing...</>
+                        ) : (
+                            <><i className="fa-solid fa-check"></i> Confirm & Import</>
+                        )}
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // --- RENDER: UPLOAD SCREEN ---
     return (
         <div className="p-8 lg:p-12 max-w-5xl mx-auto min-h-screen flex flex-col justify-center animate-slide-up">
             <div className="text-center mb-12">
@@ -238,7 +364,7 @@ const DataIngestion: React.FC<DataIngestionProps> = ({ publishers, onDataIngeste
                                     <span className="flex items-center gap-2">
                                         <i className="fa-solid fa-microchip"></i> {status.message}
                                     </span>
-                                    <span>{status.progress}%</span>
+                                    <span>{Math.round(status.progress)}%</span>
                                 </div>
                                 <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
                                     <div
