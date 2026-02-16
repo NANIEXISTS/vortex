@@ -268,4 +268,96 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
             contextString = `
                 Inventory Data Summary:
                 - Total Unique Book Items: ${itemCount}
-                - Total
+                - Total Schools: ${schoolCount}
+                - School Names: ${schoolNames}
+                - Publisher Stats: ${publisherStatsStr}
+            `;
+        }
+
+        const prompt = `
+            You are Vortex Data Analyst.
+            You have access to the following inventory context:
+            ${contextString}
+
+            User Query: ${query}
+
+            Answer the user's question based on the data. Be concise and professional.
+        `;
+
+        const response = await ai.models.generateContent({
+            model: modelName,
+            contents: {
+                parts: [
+                    { text: prompt }
+                ]
+            }
+        });
+
+        let text = "I'm sorry, I couldn't process that.";
+        if (response.candidates && response.candidates[0] && response.candidates[0].content && response.candidates[0].content.parts) {
+            text = response.candidates[0].content.parts[0].text;
+        }
+
+        res.json({ response: text });
+
+    } catch (e) {
+        console.error("Chat Error:", e);
+        res.status(500).json({ error: 'Chat Failed' });
+    }
+});
+
+// Get Current User Info
+app.get('/api/me', authenticateToken, (req, res) => {
+    res.json({
+        user: {
+            username: req.user.username,
+            role: req.user.role
+        }
+    });
+});
+
+// Admin: Get Users
+app.get('/api/users', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'admin') return res.sendStatus(403);
+    try {
+        const users = await prisma.user.findMany({
+            select: { id: true, username: true, role: true }
+        });
+        res.json({ users });
+    } catch (e) {
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Admin: Create User
+app.post('/api/users', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'admin') return res.sendStatus(403);
+    const { username, password, role } = req.body;
+
+    if (!username || !password) return res.status(400).json({ error: 'Missing fields' });
+
+    try {
+        const passwordHash = await bcrypt.hash(password, 10);
+        const newUser = await prisma.user.create({
+            data: {
+                username,
+                passwordHash,
+                role: role || 'user'
+            }
+        });
+        res.json({ success: true, user: { id: newUser.id, username: newUser.username, role: newUser.role } });
+    } catch (e) {
+        if (e.code === 'P2002') {
+             return res.status(400).json({ error: 'Username already exists' });
+        }
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+if (require.main === module) {
+    app.listen(port, () => {
+        console.log(`Server running on port ${port}`);
+    });
+}
+
+module.exports = app;

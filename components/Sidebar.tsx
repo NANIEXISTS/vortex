@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ViewMode } from '../types';
 
@@ -8,16 +7,20 @@ interface SidebarProps {
     isOpen: boolean;
     onClose: () => void;
     onLogout: () => void;
+    user: { username: string; role: string } | null;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isOpen, onClose, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isOpen, onClose, onLogout, user }) => {
     const navItems = [
         { id: ViewMode.DASHBOARD, label: 'Control Center', icon: 'fa-gauge-high' },
         { id: ViewMode.SCHOOLS, label: 'Schools & Dispatch', icon: 'fa-school' },
         { id: ViewMode.UPLOAD, label: 'Data Ingestion', icon: 'fa-cloud-arrow-up' },
         { id: ViewMode.INVENTORY, label: 'Inventory', icon: 'fa-box-archive' },
-        // System Config removed from sidebar
     ];
+
+    if (user?.role === 'admin') {
+        navItems.push({ id: ViewMode.USERS, label: 'User Management', icon: 'fa-users-gear' });
+    }
 
     const handleNavClick = (view: ViewMode) => {
         onNavigate(view);
@@ -96,12 +99,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isOpen, onCl
                         className={`w-full glass-panel p-3 rounded-2xl flex items-center gap-3 cursor-pointer group hover:border-accent/30 transition-all text-left ${currentView === ViewMode.PROFILE ? 'border-accent/40 bg-accent/5' : ''}`}
                     >
                         <div className="w-10 h-10 rounded-full bg-surfaceHighlight flex items-center justify-center text-secondary border border-border group-hover:border-accent/20 transition-colors relative">
-                            JD
+                            {(user?.username || 'U').substring(0, 2).toUpperCase()}
                             <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-surface rounded-full"></div>
                         </div>
                         <div className="overflow-hidden">
-                            <p className="text-sm font-bold text-white truncate">John Doe</p>
-                            <p className="text-[10px] text-secondary font-bold uppercase tracking-widest truncate">Administrator</p>
+                            <p className="text-sm font-bold text-white truncate">{user?.username || 'User'}</p>
+                            <p className="text-[10px] text-secondary font-bold uppercase tracking-widest truncate">{user?.role || 'Guest'}</p>
                         </div>
                     </button>
 
