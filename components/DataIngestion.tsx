@@ -148,7 +148,7 @@ const DataIngestion: React.FC<DataIngestionProps> = ({ publishers, onDataIngeste
                     ref={inputRef}
                     type="file"
                     multiple
-                    accept="image/*,application/pdf"
+                    accept="image/*,application/pdf,.xlsx,.xls,.csv"
                     className="hidden"
                     onChange={handleChange}
                 />
@@ -213,7 +213,7 @@ const DataIngestion: React.FC<DataIngestionProps> = ({ publishers, onDataIngeste
                             <div key={fileWrapper.id} className="flex items-center justify-between bg-white/[0.02] p-4 rounded-xl border border-white/5 group hover:border-white/10 transition-colors">
                                 <div className="flex items-center gap-4 overflow-hidden">
                                     <div className="w-10 h-10 rounded-lg bg-zinc-900 flex items-center justify-center text-zinc-500">
-                                        <i className={`fa-regular ${fileWrapper.file.type.includes('image') ? 'fa-file-image' : 'fa-file-pdf'}`}></i>
+                                        <i className={`fa-regular ${fileWrapper.file.type.includes('image') ? 'fa-file-image' : (fileWrapper.file.type.includes('pdf') ? 'fa-file-pdf' : 'fa-file-excel')}`}></i>
                                     </div>
                                     <div>
                                         <p className="text-white font-medium truncate max-w-md text-sm">{fileWrapper.file.name}</p>

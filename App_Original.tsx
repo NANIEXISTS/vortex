@@ -85,30 +85,8 @@ const LoginScreen = ({ onLogin, notify }: { onLogin: (token: string, user: any) 
                 } else {
                     notify('error', 'Login Failed: ' + (data.message || 'Invalid credentials'));
                 }
-                        } else if (mode === 'register') {
-                if (password !== confirmPass) {
-                    notify('error', 'Passwords do not match');
-                    setIsLoading(false);
-                    return;
-                }
-                try {
-                    const res = await fetch('/api/register', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username: email, password, fullName })
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        onLogin(data.token, data.user);
-                        notify('success', 'Account created successfully!');
-                    } else {
-                        notify('error', 'Registration Failed: ' + (data.message || 'Error'));
-                    }
-                } catch(e) {
-                     notify('error', 'Registration Error');
-                }
             } else {
-                notify('info', 'Password reset not available in demo.');
+                notify('info', 'Feature disabled in demo.');
             }
         } catch (err) {
             notify('error', 'Connection Error');
@@ -247,7 +225,6 @@ const LoginScreen = ({ onLogin, notify }: { onLogin: (token: string, user: any) 
                     </button>
                 </form>
 
-                
                 <div className="mt-6 text-center text-sm space-y-2">
                     {mode === 'login' && (
                         <p className="text-zinc-500">
@@ -261,6 +238,14 @@ const LoginScreen = ({ onLogin, notify }: { onLogin: (token: string, user: any) 
                             <button onClick={() => setMode('login')} className="text-white font-bold hover:underline">Back to Login</button>
                         </p>
                     )}
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-white/5 text-center px-4">
+                    <p className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold mb-2">Demo Credentials</p>
+                    <div className="flex justify-center gap-4 text-xs font-mono text-indigo-400">
+                        <span className="bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20">Username: admin</span>
+                        <span className="bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20">Password: password123</span>
+                    </div>
                 </div>
             </div>
         </div>

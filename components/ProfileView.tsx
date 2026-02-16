@@ -1,108 +1,139 @@
 
 import React, { useState } from 'react';
-import { NotificationType } from '../types';
 
 interface ProfileViewProps {
-    notify: (type: NotificationType, message: string) => void;
+    notify: (type: 'success' | 'error' | 'info', msg: string) => void;
 }
 
 const ProfileView: React.FC<ProfileViewProps> = ({ notify }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [orgName, setOrgName] = useState('EduFlow AI Logistics');
     const [email, setEmail] = useState('admin@eduflow-ai.com');
-    const [phone, setPhone] = useState('+1 (555) 123-4567');
-    const [region, setRegion] = useState('North America - East');
+    const [phone, setPhone] = useState('+1 (555) 000-0000');
+    const [region, setRegion] = useState('North America (East)');
 
-    const handleClearData = () => {
-        if (confirm("Are you sure you want to clear all local data? This cannot be undone.")) {
-            localStorage.clear();
-            notify('success', 'System data cleared. Reloading...');
-            setTimeout(() => window.location.reload(), 1500);
-        }
-    };
+    // Password Change State
+    const [showChangePassword, setShowChangePassword] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
 
     const handleSave = () => {
         setIsEditing(false);
         notify('success', 'Profile updated successfully.');
     };
 
+    const handleClearData = () => {
+        if (confirm('Are you sure you want to clear all local data? This cannot be undone.')) {
+            localStorage.clear();
+            window.location.reload();
+        }
+    };
+
+    const handleChangePassword = async () => {
+        if (newPassword !== confirmPassword) {
+            notify('error', 'New passwords do not match');
+            return;
+        }
+        if (!currentPassword || !newPassword) {
+            notify('error', 'Please fill in all fields');
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('vortex_token');
+            const res = await fetch('/api/user/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                notify('success', 'Password updated successfully');
+                setShowChangePassword(false);
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+            } else {
+                notify('error', data.message || 'Failed to update password');
+            }
+        } catch (e) {
+            notify('error', 'Connection error');
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-background animate-fade-in pb-20">
-
-            {/* Hero Header */}
-            <div className="relative h-64 bg-gradient-to-r from-indigo-900 via-purple-900 to-background overflow-hidden">
-                <div className="absolute inset-0 bg-black/20"></div>
-                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent"></div>
-                <div className="absolute inset-0 flex items-center justify-center opacity-10">
-                    <i className="fa-solid fa-hurricane text-9xl animate-spin-reverse-slow"></i>
+        <div className="p-8 lg:p-12 max-w-4xl mx-auto min-h-screen animate-slide-up pb-32">
+            <header className="mb-12 relative">
+                <div className="absolute top-0 right-0 hidden md:block opacity-20 transform translate-x-10 -translate-y-10">
+                    <div className="w-64 h-64 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full blur-[100px]"></div>
                 </div>
-            </div>
 
-            <div className="max-w-6xl mx-auto px-6 -mt-24 relative z-10">
+                <h2 className="text-4xl font-black text-white tracking-tight mb-3 flex items-center gap-3">
+                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-500">Settings</span>
+                    <div className="h-px flex-1 bg-gradient-to-r from-white/20 to-transparent ml-6"></div>
+                </h2>
+                <p className="text-zinc-400 text-lg">Manage your account and organization preferences.</p>
+            </header>
 
-                <div className="flex flex-col md:flex-row items-end gap-6 mb-8">
-                    <div className="relative group">
-                        <div className="w-40 h-40 rounded-3xl bg-surface border-4 border-surface shadow-2xl flex items-center justify-center text-5xl text-zinc-600 overflow-hidden relative">
-                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/20"></div>
-                            <span className="font-bold">JD</span>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
+
+                {/* Left Column - Profile Card */}
+                <div className="lg:col-span-1 space-y-6">
+                    <div className="bg-surface border border-white/5 rounded-3xl p-6 shadow-xl relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+                        <div className="relative z-10 flex flex-col items-center text-center">
+                            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-zinc-800 to-black border-2 border-indigo-500/30 p-1 mb-4 shadow-lg mb-6 group-hover:scale-105 transition-transform duration-300">
+                                <img src="https://ui-avatars.com/api/?name=Admin+User&background=6366f1&color=fff" alt="Profile" className="w-full h-full rounded-xl object-cover" />
+                                <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-black rounded-lg border border-white/10 flex items-center justify-center text-green-400 text-xs shadow-lg">
+                                    <i className="fa-solid fa-circle-check"></i>
+                                </div>
+                            </div>
+
+                            <h3 className="text-xl font-bold text-white mb-1">Administrator</h3>
+                            <p className="text-indigo-400 text-sm font-medium mb-6">System Operator</p>
+
+                            <button
+                                onClick={() => setIsEditing(!isEditing)}
+                                className={`w-full py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${isEditing ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white'}`}
+                            >
+                                <i className={`fa-solid ${isEditing ? 'fa-check' : 'fa-pen-to-square'}`}></i>
+                                {isEditing ? 'Done Editing' : 'Edit Profile'}
+                            </button>
                         </div>
-                        <button className="absolute bottom-2 right-2 w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg hover:bg-indigo-500 transition-colors">
-                            <i className="fa-solid fa-camera"></i>
-                        </button>
                     </div>
-                    <div className="flex-1 pb-2">
-                        <h1 className="text-4xl font-black text-white tracking-tight mb-1">John Doe</h1>
-                        <p className="text-zinc-400 font-medium flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            Administrator
-                            <span className="text-zinc-600 mx-2">???</span>
-                            <span className="text-indigo-400">System Admin</span>
-                        </p>
-                    </div>
-                    <div className="flex gap-3 pb-2">
-                        <button
-                            onClick={() => setIsEditing(!isEditing)}
-                            className="px-6 py-3 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition-all shadow-lg flex items-center gap-2"
-                        >
-                            <i className={`fa-solid ${isEditing ? 'fa-xmark' : 'fa-pen-to-square'}`}></i>
-                            {isEditing ? 'Cancel Editing' : 'Edit Profile'}
-                        </button>
+
+                    <div className="bg-gradient-to-br from-indigo-900/40 to-black border border-indigo-500/20 rounded-3xl p-6 relative overflow-hidden">
+                        <i className="fa-solid fa-gem absolute -bottom-6 -right-6 text-9xl text-indigo-500/5 rotate-12"></i>
+                        <h4 className="text-white font-bold mb-2 relative z-10">Pro Plan</h4>
+                        <p className="text-indigo-200 text-xs mb-4 relative z-10 opacity-70">Your organization is on the enterprise tier.</p>
+                        <div className="w-full bg-black/40 rounded-full h-1.5 mb-2 relative z-10 overflow-hidden">
+                            <div className="absolute left-0 top-0 h-full bg-indigo-500 w-3/4"></div>
+                        </div>
+                        <p className="text-[10px] text-zinc-500 relative z-10">75% Usage</p>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Right Column - Forms */}
+                <div className="lg:col-span-2 space-y-8">
 
-                    {/* Left Column - Form */}
-                    <div className="lg:col-span-2 space-y-6">
+                    {/* General Information */}
+                    <div className="space-y-6">
                         <div className="bg-surface border border-white/5 rounded-3xl p-8 shadow-xl">
                             <div className="flex items-center justify-between mb-8">
                                 <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                                        <i className="fa-regular fa-id-card"></i>
+                                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-400">
+                                        <i className="fa-solid fa-id-card"></i>
                                     </div>
-                                    Personal Information
+                                    General Information
                                 </h3>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Full Name</label>
-                                    <input
-                                        type="text"
-                                        value="John Doe"
-                                        disabled
-                                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-zinc-400 cursor-not-allowed"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Role</label>
-                                    <input
-                                        type="text"
-                                        value="Super Administrator"
-                                        disabled
-                                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-zinc-400 cursor-not-allowed"
-                                    />
-                                </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Email Address</label>
                                     <input
@@ -207,12 +238,54 @@ const ProfileView: React.FC<ProfileViewProps> = ({ notify }) => {
                             </h3>
 
                             <div className="space-y-3">
-                                <button
-                                    onClick={() => notify('info', 'Password reset email sent.')}
-                                    className="w-full py-3 bg-surface hover:bg-white/5 border border-white/10 text-zinc-300 font-bold rounded-xl transition-all"
-                                >
-                                    Change Password
-                                </button>
+                                {!showChangePassword ? (
+                                    <button
+                                        onClick={() => setShowChangePassword(true)}
+                                        className="w-full py-3 bg-surface hover:bg-white/5 border border-white/10 text-zinc-300 font-bold rounded-xl transition-all"
+                                    >
+                                        Change Password
+                                    </button>
+                                ) : (
+                                    <div className="bg-black/20 p-4 rounded-xl border border-white/5 animate-fade-in">
+                                        <div className="space-y-3 mb-4">
+                                            <input
+                                                type="password"
+                                                placeholder="Current Password"
+                                                value={currentPassword}
+                                                onChange={e => setCurrentPassword(e.target.value)}
+                                                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
+                                            />
+                                            <input
+                                                type="password"
+                                                placeholder="New Password"
+                                                value={newPassword}
+                                                onChange={e => setNewPassword(e.target.value)}
+                                                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
+                                            />
+                                            <input
+                                                type="password"
+                                                placeholder="Confirm New"
+                                                value={confirmPassword}
+                                                onChange={e => setConfirmPassword(e.target.value)}
+                                                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setShowChangePassword(false)}
+                                                className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold text-zinc-400"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={handleChangePassword}
+                                                className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-bold text-white shadow-lg shadow-indigo-500/20"
+                                            >
+                                                Update
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <button
                                     onClick={handleClearData}
