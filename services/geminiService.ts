@@ -17,7 +17,16 @@ export const analyzeDocument = async (file: File) => {
 
     if (!res.ok) {
         const errorText = await res.text();
-        throw new Error(errorText || 'Analysis failed');
+        let errorMessage = errorText || 'Analysis failed';
+        try {
+            const errorJson = JSON.parse(errorText);
+            // Prioritize details, then error message
+            if (errorJson.details) errorMessage = errorJson.details;
+            else if (errorJson.error) errorMessage = errorJson.error;
+        } catch (e) {
+            // Not JSON
+        }
+        throw new Error(errorMessage);
     }
 
     return res.json();
@@ -40,13 +49,26 @@ export const queryAgent = async (
         });
 
         if (!res.ok) {
-            throw new Error('Chat failed');
+            const errorText = await res.text();
+            let errorMessage = 'Chat failed';
+             try {
+                const errorJson = JSON.parse(errorText);
+                if (errorJson.details) errorMessage = errorJson.details;
+                else if (errorJson.error) errorMessage = errorJson.error;
+            } catch (e) {
+                // Not JSON
+            }
+            throw new Error(errorMessage);
         }
 
         const data = await res.json();
         return data.response;
     } catch (e) {
         console.error(e);
+        // If the error message is one we threw, use it.
+        if (e instanceof Error && e.message && e.message !== 'Chat failed') {
+             return `Error: ${e.message}`;
+        }
         return "I am currently unable to reach the Vortex core. Please try again later.";
     }
 };

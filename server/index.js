@@ -160,7 +160,7 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
         // Read file
         const fileBuffer = await fs.promises.readFile(req.file.path);
         const mimeType = req.file.mimetype;
-        const modelName = 'gemini-1.5-flash';
+        const modelName = 'gemini-2.0-flash';
 
         const prompt = `
             You are Vortex Data Ingestion Engine.
@@ -238,7 +238,7 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
         if (req.file) {
             try { await fs.promises.unlink(req.file.path); } catch (u) {}
         }
-        res.status(500).json({ error: 'AI Processing Failed' });
+        res.status(500).json({ error: 'AI Processing Failed', details: e.message });
     }
 });
 

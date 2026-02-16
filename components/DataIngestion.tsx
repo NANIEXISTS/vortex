@@ -118,8 +118,9 @@ const DataIngestion: React.FC<DataIngestionProps> = ({ publishers, onDataIngeste
 
         } catch (error) {
             console.error(error);
-            setStatus({ isProcessing: false, message: 'Processing Error', progress: 0, error: String(error) });
-            notify('error', 'AI Processing Failed. Please ensuring backend is running and file is valid.');
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            setStatus({ isProcessing: false, message: 'Processing Error', progress: 0, error: errorMsg });
+            notify('error', `AI Error: ${errorMsg}`);
         }
     };
 
