@@ -1,48 +1,57 @@
 const XLSX = require('xlsx');
 const express = require('express');
-const cors = require('cors');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
+const cors = require('cors');
+const path = require('path');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const multer = require('multer');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const fs = require('fs');
+
 require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3000;
 const prisma = new PrismaClient();
-
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const ai = genAI; // Alias for consistency
+const upload = multer({ dest: 'uploads/' });
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '50mb' })); // Increased limit for context data
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// Simplified Multer for File Uploads
-const upload = multer({ dest: 'uploads/' });
+// AI Client
+const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Authentication Middleware
+// Auth Middleware
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
-    if (token == null) return res.status(401).json({ error: 'Unauthorized' });
+    if (!token) return res.sendStatus(401);
 
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.status(403).json({ error: 'Forbidden' });
+        if (err) return res.sendStatus(403);
         req.user = user;
         next();
     });
 };
 
-// Login Route
+/* --- Routes --- */
+
+// Login (MERGED: Kept Security Validation)
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
+
+    // Security Fix: Validation
+    if (typeof username !== 'string' || !username.trim() || username.length > 255) {
+        return res.status(400).json({ success: false, message: 'Invalid or missing username' });
+    }
+    if (typeof password !== 'string' || !password.trim() || password.length > 255) {
+        return res.status(400).json({ success: false, message: 'Invalid or missing password' });
+    }
+
     try {
         const user = await prisma.user.findUnique({ where: { username } });
         if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials' });
@@ -50,84 +59,11 @@ app.post('/api/login', async (req, res) => {
         const validPassword = await bcrypt.compare(password, user.passwordHash);
         if (!validPassword) return res.status(401).json({ success: false, message: 'Invalid credentials' });
 
-        const token = jwt.sign({ username: user.username, role: user.role, fullName: user.fullName }, process.env.JWT_SECRET, { expiresIn: '8h' });
-        res.json({
-            success: true,
-            token,
-            user: {
-                username: user.username,
-                role: user.role,
-                fullName: user.fullName
-            }
-        });
+        const token = jwt.sign({ username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '8h' });
+        res.json({ success: true, token, user: { username: user.username, role: user.role } });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-// Register User
-app.post('/api/register', async (req, res) => {
-    const { username, password, fullName } = req.body;
-
-    if (!username || !password) {
-        return res.status(400).json({ success: false, message: 'Username and password required' });
-    }
-
-    try {
-        const existingUser = await prisma.user.findUnique({ where: { username } });
-        if (existingUser) {
-            return res.status(400).json({ success: false, message: 'Username already taken' });
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const user = await prisma.user.create({
-            data: {
-                username,
-                passwordHash: hashedPassword,
-                fullName: fullName || '',
-                role: 'user' // Default to normal user for self-registration
-            }
-        });
-
-        // Auto-login after registration
-        const token = jwt.sign({ username: user.username, role: user.role, fullName: user.fullName }, process.env.JWT_SECRET, { expiresIn: '8h' });
-
-        res.json({ success: true, token, user: { username: user.username, role: user.role, fullName: user.fullName } });
-
-    } catch (e) {
-        console.error("Registration Error:", e);
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
-
-// Change Password
-app.post('/api/user/change-password', authenticateToken, async (req, res) => {
-    const { currentPassword, newPassword } = req.body;
-    const username = req.user.username;
-
-    if (!currentPassword || !newPassword) {
-        return res.status(400).json({ success: false, message: 'Missing fields' });
-    }
-
-    try {
-        const user = await prisma.user.findUnique({ where: { username } });
-
-        const validPassword = await bcrypt.compare(currentPassword, user.passwordHash);
-        if (!validPassword) {
-            return res.status(401).json({ success: false, message: 'Incorrect current password' });
-        }
-
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-        await prisma.user.update({
-            where: { username },
-            data: { passwordHash: hashedPassword }
-        });
-
-        res.json({ success: true, message: 'Password updated successfully' });
-    } catch (e) {
-        console.error("Password Change Error:", e);
-        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
@@ -154,7 +90,7 @@ app.get('/api/data', authenticateToken, async (req, res) => {
     }
 });
 
-// Ingest Data
+// Ingest Data (MERGED: Kept Security Validation)
 app.post('/api/ingest', authenticateToken, async (req, res) => {
     const { schoolName, items } = req.body;
 
@@ -213,7 +149,7 @@ app.post('/api/ingest', authenticateToken, async (req, res) => {
     }
 });
 
-// Analyze Document
+// Analyze Document (MERGED: Kept Main Branch Async Logic for Performance)
 app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
@@ -224,7 +160,7 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
         // Read file
         const fileBuffer = await fs.promises.readFile(req.file.path);
         const mimeType = req.file.mimetype;
-        const modelName = 'gemini-1.5-flash'; 
+        const modelName = 'gemini-1.5-flash';
 
         const prompt = `
             You are Vortex Data Ingestion Engine.
@@ -368,10 +304,57 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
     }
 });
 
-app.use((req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
+app.get('/api/me', authenticateToken, (req, res) => {
+    res.json({
+        user: {
+            username: req.user.username,
+            role: req.user.role
+        }
+    });
 });
 
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+// Admin: Get Users
+app.get('/api/users', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'admin') return res.sendStatus(403);
+    try {
+        const users = await prisma.user.findMany({
+            select: { id: true, username: true, role: true }
+        });
+        res.json({ users });
+    } catch (e) {
+        res.status(500).json({ error: 'Database error' });
+    }
 });
+
+// Admin: Create User
+app.post('/api/users', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'admin') return res.sendStatus(403);
+    const { username, password, role } = req.body;
+
+    if (!username || !password) return res.status(400).json({ error: 'Missing fields' });
+
+    try {
+        const passwordHash = await bcrypt.hash(password, 10);
+        const newUser = await prisma.user.create({
+            data: {
+                username,
+                passwordHash,
+                role: role || 'user'
+            }
+        });
+        res.json({ success: true, user: { id: newUser.id, username: newUser.username, role: newUser.role } });
+    } catch (e) {
+        if (e.code === 'P2002') {
+             return res.status(400).json({ error: 'Username already exists' });
+        }
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+if (require.main === module) {
+    app.listen(port, () => {
+        console.log(`Server running on port ${port}`);
+    });
+}
+
+module.exports = app;
